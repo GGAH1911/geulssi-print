@@ -75,6 +75,20 @@
   .stamp { display: inline-block; border: 4px solid var(--warn); color: var(--warn); border-radius: 50%;
            padding: 14px 18px; font-size: 22px; font-weight: 700; transform: rotate(-8deg); }
   .center { text-align: center; }
+  button.small { min-height: 34px; padding: 6px 12px; font-size: 14px; font-weight: 400; }
+  .chip { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 20px; padding: 4px 10px; margin: 0 4px 6px 0; font-size: 14px; }
+  .levelup { background: #fff4d6; border-radius: 12px; padding: 12px; color: #6b4b00; font-weight: 700; line-height: 1.7; }
+  h2.sub { font-size: 17px; margin: 18px 0 8px; }
+  .stats { display: flex; gap: 10px; }
+  .stats > div { flex: 1; background: var(--accent-soft); border-radius: 12px; padding: 10px; text-align: center; }
+  .stats b { font-size: 28px; color: var(--accent); }
+  .stats span { display: block; font-size: 12px; color: #666; margin-top: 2px; }
+  .warnline { color: var(--warn); margin: 10px 0 0; }
+  .ptable { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .ptable th, .ptable td { border-bottom: 1px solid #eee; padding: 6px 4px; text-align: left; vertical-align: middle; }
+  .ptable th { color: #777; font-weight: 400; font-size: 12px; }
+  .ptable td.w { font-family: 'Badasseugi'; font-size: 20px; }
+  .ptable select { font: inherit; padding: 4px; border-radius: 8px; }
   .muted { color: #888; font-size: 13px; }
 </style>
 </head>
@@ -112,6 +126,7 @@
         <div>
           <label for="inStep">따라 쓰기 칸 (낱말 하나를 4번 써요)</label>
           <select id="inStep">
+            <option value="auto">자동 (낱말마다 알맞게)</option>
             <option value="3">흐린 글자 3번 + 빈칸 1번</option>
             <option value="2">흐린 글자 2번 + 빈칸 2번</option>
             <option value="1">흐린 글자 1번 + 빈칸 3번</option>
@@ -123,13 +138,14 @@
           <label class="check"><input type="checkbox" id="inPenOnly"> 펜으로만 쓰기 (손바닥·손가락 무시)</label>
         </div>
       </div>
+      <div id="stepPreview" style="margin-top:10px"></div>
     </div>
     <div class="row">
       <button class="primary" id="btnStart">시작!</button>
       <button id="btnShowCol">내 글씨 모음</button>
       <button id="btnOtherWords">다른 낱말</button>
     </div>
-    <p class="muted" style="margin-top:16px"><a href="../index.html">학습지 인쇄 사이트로</a></p>
+    <p class="muted" style="margin-top:16px"><button id="btnParent" class="small">부모 화면</button> &nbsp; <a href="../index.html">학습지 인쇄 사이트로</a></p>
   </div>
 </section>
 
@@ -149,6 +165,7 @@
     <h1>다 했다!</h1>
     <div class="big"><canvas id="bigBest"></canvas></div>
     <p id="doneMsg"></p>
+    <p id="levelMsg" class="levelup" hidden></p>
     <div class="row">
       <button class="primary" id="btnAgain">한 장 더</button>
       <button id="btnShowCol2">내 글씨 모음</button>
@@ -163,6 +180,40 @@
     <p id="colMsg">한 장을 다 쓰고 고른 글자가 여기에 모여요.</p>
     <div class="thumbs" id="colList"></div>
     <div class="row" style="margin-top:18px"><button id="btnColBack">돌아가기</button></div>
+  </div>
+</section>
+
+<!-- 부모 확인 -->
+<section class="screen" id="scrGate" hidden>
+  <div class="inner center">
+    <h1>부모님 확인</h1>
+    <p>답을 넣어 주세요.</p>
+    <form id="gateForm" class="card" style="max-width:360px;margin:0 auto">
+      <div id="gateQ" style="font-size:30px;font-weight:700;margin-bottom:12px"></div>
+      <input type="number" id="gateIn" inputmode="numeric" style="width:100%;font-size:24px;padding:10px;border:1px solid #bbb;border-radius:10px;text-align:center">
+      <p id="gateMsg" style="color:#c0612b;min-height:1.4em;margin:8px 0"></p>
+      <div class="row"><button type="button" id="btnGateCancel">돌아가기</button><button type="submit" class="primary">확인</button></div>
+    </form>
+  </div>
+</section>
+
+<!-- 부모 화면 -->
+<section class="screen" id="scrParent" hidden>
+  <div class="inner">
+    <h1>부모 화면</h1>
+    <h2 class="sub">이번 주 (최근 7일)</h2>
+    <div class="card" id="pWeek"></div>
+    <h2 class="sub">낱말별 흐린 글자</h2>
+    <div class="card" id="pWords"></div>
+    <h2 class="sub">기록</h2>
+    <div class="card" id="pLog" style="overflow-x:auto"></div>
+    <h2 class="sub">설정</h2>
+    <div class="card">
+      <label class="check"><input type="checkbox" id="pPenOnly"> 펜으로만 쓰기 (손바닥·손가락 무시)</label>
+      <p class="muted" style="margin-top:10px">쓴 글씨와 기록은 이 기기의 브라우저에만 저장돼요. 브라우저 기록(사이트 데이터)을 지우면 함께 지워져요.</p>
+      <button id="btnWipe">기록 모두 지우기</button>
+    </div>
+    <div class="row"><button class="primary" id="btnParentBack">돌아가기</button></div>
   </div>
 </section>
 

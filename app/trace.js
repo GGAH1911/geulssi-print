@@ -1,4 +1,4 @@
-// 글씨 연습장 - 화면에 쓰기 (A1 시제품)
+// 글씨 연습장 - 화면에 쓰기 (A1·A2 시제품)
 // 흐린 글자 칸 위에 손가락·펜으로 따라 쓰고, 한 장을 마치면 제일 잘 쓴 글자를 고른다.
 // 채점하지 않는다. 쓴 글씨(획 좌표)는 이 기기의 localStorage 에만 저장한다. 서버로 보내지 않는다.
 (() => {
@@ -10,18 +10,30 @@ const CHAR_BUDGET = 24;      // 한 장 글자 수 상한 (5~10분)
 const STORE = 'geulssi.v1';
 const $ = id => document.getElementById(id);
 
+// 따라 쓰기 칸 자동 줄이기 규칙 (PLAN.md 결정 5: 흐린 글자 3 → 2 → 1 → 0, 한 단계를 최소 일주일).
+// 같은 단계에서 7일이 지나고 그 단계로 3장 이상 썼을 때만 한 칸 줄인다. 오래 쉬었다 와도 바로 줄지 않게 장 수도 본다.
+const LEVEL_DAYS = 7, LEVEL_SHEETS = 3, LEVEL_START = 3;
+const now = () => (window.__traceNow ? new Date(window.__traceNow) : new Date());   // 시험에서 날짜를 바꿀 수 있게
+const pad2 = n => String(n).padStart(2, '0');
+const dayKey = d => { const x = new Date(d); return `${x.getFullYear()}-${pad2(x.getMonth() + 1)}-${pad2(x.getDate())}`; };
+const daysBetween = (a, b) => Math.round((Date.parse(dayKey(b)) - Date.parse(dayKey(a))) / 86400000);
+const fmtDay = d => { const x = new Date(d); return `${x.getMonth() + 1}월 ${x.getDate()}일`; };
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
 // ── 저장 ─────────────────────────────────────────────
-// { sessions: [{id, date, words, step, startedAt, endedAt, cells:[{w, ch, copy, traced, strokes}] , best}], next: 0 }
+// { sessions: [{id, date, words, steps, auto, startedAt, endedAt, cells:[{w, ch, copy, traced, strokes}], best}],
+//   words: { 낱말: {first, last, level, since, sheetsAtLevel, sheets, manual} }, next: 0 }
 function load() {
-  try { return Object.assign({ sessions: [], next: 0 }, JSON.parse(localStorage.getItem(STORE) || '{}')); }
-  catch (e) { return { sessions: [], next: 0 }; }
+  const empty = () => ({ sessions: [], words: {}, next: 0 });
+  try { return Object.assign(empty(), JSON.parse(localStorage.getItem(STORE) || '{}')); }
+  catch (e) { return empty(); }
 }
 function save(db) {
   try { localStorage.setItem(STORE, JSON.stringify(db)); return true; }
   catch (e) { alert('기기 저장 공간이 모자라 저장하지 못했어요.'); return false; }
 }
 let db = load();
-const settings = Object.assign({ penOnly: false, step: 3 }, JSON.parse(localStorage.getItem(STORE + '.settings') || '{}'));
+const settings = Object.assign({ penOnly: false, step: 'auto' }, JSON.parse(localStorage.getItem(STORE + '.settings') || '{}'));
 const saveSettings = () => localStorage.setItem(STORE + '.settings', JSON.stringify(settings));
 
 // ── 낱말 고르기 ───────────────────────────────────────
@@ -45,8 +57,37 @@ function parseWords(s) {
           .map(x => [...x].slice(0, 6).join(''));        // 한 낱말 6글자까지
 }
 
+// ── 낱말별 단계 ───────────────────────────────────────
+const levelOf = w => (db.words[w] ? db.words[w].level : LEVEL_START);
+function progressOf(w) {
+  const info = db.words[w];
+  if (!info) return { level: LEVEL_START, days: 0, sheets: 0, needDays: LEVEL_DAYS, needSheets: LEVEL_SHEETS, isNew: true };
+  const days = daysBetween(info.since, now());
+  return { level: info.level, days, sheets: info.sheetsAtLevel,
+           needDays: Math.max(0, LEVEL_DAYS - days), needSheets: Math.max(0, LEVEL_SHEETS - info.sheetsAtLevel), isNew: false };
+}
+// 한 장을 마친 뒤 낱말 기록을 고치고, 단계가 줄어든 낱말을 돌려준다.
+function updateWordStats(sess) {
+  const ups = [];
+  const today = now().toISOString();
+  sess.words.forEach((w, k) => {
+    if (!sess.cells.some(c => c.w === w)) return;            // 한 글자도 안 쓴 낱말은 세지 않는다
+    let info = db.words[w];
+    if (!info) info = db.words[w] = { first: today, last: today, level: LEVEL_START, since: today, sheetsAtLevel: 0, sheets: 0, manual: false };
+    info.sheets++; info.last = today;
+    if (sess.auto && sess.steps[k] === info.level) {
+      info.sheetsAtLevel++;
+      if (info.level > 0 && daysBetween(info.since, now()) >= LEVEL_DAYS && info.sheetsAtLevel >= LEVEL_SHEETS) {
+        info.level--; info.since = today; info.sheetsAtLevel = 0; info.manual = false;
+        ups.push({ w, level: info.level });
+      }
+    }
+  });
+  return ups;
+}
+
 // ── 상태 ─────────────────────────────────────────────
-let words = [], step = 3, wi = 0;            // 오늘 낱말, 흐린 글자 수, 지금 낱말 번호
+let words = [], steps = [], stepMode = 'auto', wi = 0;   // 오늘 낱말, 낱말마다 흐린 글자 수, 자동/고정, 지금 낱말 번호
 let pages = [];                               // 낱말마다 [copy][charIdx] = strokes[]
 let undoStack = [];                           // {copy, ci, type:'stroke'|'clear', strokes}
 let mode = 'write';                           // write | erase
@@ -88,7 +129,7 @@ function layout() {
     const [x, y] = cellOrigin(r, c);
     // 이웃 칸 테두리가 겹치도록 1px 넓힌다
     html += `<div class="cell" style="left:${x - (c ? 1 : 0)}px; top:${y}px; width:${geo.cell + (c ? 1 : 0)}px; height:${geo.cell}px;">`
-         + (r < step ? `<span class="ch" style="font-size:${Math.round(geo.cell * 0.792)}px">${chars[c]}</span>` : '')
+         + (r < steps[wi] ? `<span class="ch" style="font-size:${Math.round(geo.cell * 0.792)}px">${chars[c]}</span>` : '')
          + `</div>`;
   }
   sheet.innerHTML = html;
@@ -246,7 +287,7 @@ $('btnHome').onclick = () => {
 };
 
 // ── 화면 전환 ─────────────────────────────────────────
-const screens = ['scrStart', 'scrPick', 'scrDone', 'scrCol'];
+const screens = ['scrStart', 'scrPick', 'scrDone', 'scrCol', 'scrGate', 'scrParent'];
 function show(id) { for (const s of screens) $(s).hidden = s !== id; }
 
 function showStart() {
@@ -256,23 +297,40 @@ function showStart() {
   $('inWords').value = (qw && qw.length ? qw : suggestWords()).join(', ');
   $('inStep').value = String(q.get('step') ?? settings.step);
   $('inPenOnly').checked = !!settings.penOnly;
+  previewSteps();
 }
+// 시작 화면에서 낱말마다 흐린 글자가 몇 번 나올지 미리 보여 준다
+function previewSteps() {
+  const ws = parseWords($('inWords').value);
+  const v = $('inStep').value;
+  $('stepPreview').innerHTML = ws.map(w => {
+    const n = v === 'auto' ? levelOf(w) : parseInt(v, 10);
+    const tag = v === 'auto' && !db.words[w] ? ' <span class="muted">처음</span>' : '';
+    return `<span class="chip">${esc(w)} · 흐린 글자 ${n}번${tag}</span>`;
+  }).join(' ');
+}
+$('inWords').addEventListener('input', previewSteps);
+$('inStep').addEventListener('change', previewSteps);
 $('btnOtherWords').onclick = () => {
   const list = ((window.WORDS || {}).game || []).map(x => x.word);
   db.next = (db.next + suggestWords().length) % Math.max(1, list.length); save(db);
   $('inWords').value = suggestWords().join(', ');
+  previewSteps();
 };
 $('btnStart').onclick = () => {
   const ws = parseWords($('inWords').value);
   if (!ws.length) { $('inWords').focus(); return; }
-  settings.step = parseInt($('inStep').value, 10);
+  settings.step = $('inStep').value === 'auto' ? 'auto' : parseInt($('inStep').value, 10);
   settings.penOnly = $('inPenOnly').checked; saveSettings();
   startSheet(ws, settings.step);
 };
+// st: 'auto'(낱말마다 기록된 단계) 또는 0~3 고정
 function startSheet(ws, st) {
-  words = ws; step = st; wi = 0; mode = 'write'; undoStack = [];
+  words = ws; stepMode = st; wi = 0; mode = 'write'; undoStack = [];
+  steps = words.map(w => (st === 'auto' ? levelOf(w) : st));
   pages = words.map(w => Array.from({ length: COPIES }, () => Array.from({ length: [...w].length }, () => [])));
-  session = { id: Date.now().toString(36), date: new Date().toISOString(), words: words.slice(), step, startedAt: 0, endedAt: 0, cells: [], best: -1 };
+  session = { id: Date.now().toString(36), date: now().toISOString(), words: words.slice(), steps: steps.slice(), auto: st === 'auto',
+              startedAt: 0, endedAt: 0, cells: [], best: -1 };
   show(null);
   layout();
 }
@@ -285,7 +343,7 @@ function finishSheet() {
     const chars = [...w];
     for (let r = 0; r < COPIES; r++) for (let c = 0; c < chars.length; c++) {
       const strokes = pages[k][r][c];
-      if (strokes.length) session.cells.push({ w, ch: chars[c], copy: r, traced: r < step, strokes });
+      if (strokes.length) session.cells.push({ w, ch: chars[c], copy: r, traced: r < steps[k], strokes });
     }
   });
   if (!session.cells.length) { alert('아직 쓴 글자가 없어요. 한 글자라도 써 볼까요?'); return; }
@@ -311,6 +369,7 @@ $('btnBackToWrite').onclick = () => { show(null); layout(); };
 function chooseBest(idx) {
   session.best = idx;
   db.sessions.push(session);
+  const ups = updateWordStats(session);
   const list = ((window.WORDS || {}).game || []).map(x => x.word);
   const sugg = suggestWords();
   if (words.join() === sugg.join()) db.next = (db.next + words.length) % Math.max(1, list.length);
@@ -321,6 +380,11 @@ function chooseBest(idx) {
   const min = Math.max(1, Math.round((session.endedAt - (session.startedAt || session.endedAt)) / 60000));
   const n = session.cells.length;
   $('doneMsg').textContent = `오늘 ${n}글자를 썼어요 (${min}분). 제일 잘 쓴 글자: ${[...cell.w].length > 1 ? `「${cell.w}」 중 「${cell.ch}」` : `「${cell.ch}」`}`;
+  // 단계가 줄어든 낱말은 칭찬으로 알린다 (흐린 글자가 줄어드는 것을 벌처럼 느끼지 않게)
+  $('levelMsg').innerHTML = ups.map(u => u.level === 0
+    ? `「${esc(u.w)}」 이제 혼자 쓸 수 있어요! 다음부터는 흐린 글자 없이 써요.`
+    : `「${esc(u.w)}」 많이 늘었어요! 다음부터 흐린 글자가 ${u.level}번이에요.`).join('<br>');
+  $('levelMsg').hidden = !ups.length;
   show('scrDone');
 }
 $('btnAgain').onclick = showStart;
@@ -364,6 +428,96 @@ $('btnShowCol').onclick = () => showCollection('scrStart');
 $('btnShowCol2').onclick = () => showCollection('scrDone');
 $('btnColBack').onclick = () => show(colBack);
 
+// ── 부모 화면 ─────────────────────────────────────────
+// 들어가기 전에 곱셈 문제 하나 (만 5~8세가 우연히 들어오지 않게)
+let gateAns = 0;
+function showGate() {
+  const a = 6 + Math.floor(Math.random() * 4), b = 6 + Math.floor(Math.random() * 4);
+  gateAns = a * b;
+  $('gateQ').textContent = `${a} × ${b} = ?`;
+  $('gateIn').value = ''; $('gateMsg').textContent = '';
+  show('scrGate');
+  setTimeout(() => $('gateIn').focus(), 50);
+}
+$('btnParent').onclick = showGate;
+$('btnGateCancel').onclick = () => show('scrStart');
+$('gateForm').onsubmit = e => {
+  e.preventDefault();
+  if (parseInt($('gateIn').value, 10) === gateAns) { showParent(); return; }
+  $('gateMsg').textContent = '다시 해 볼까요?';
+  const a = 6 + Math.floor(Math.random() * 4), b = 6 + Math.floor(Math.random() * 4);
+  gateAns = a * b; $('gateQ').textContent = `${a} × ${b} = ?`; $('gateIn').value = '';
+};
+
+function minutesOf(s) { return s.startedAt ? Math.max(1, Math.round((s.endedAt - s.startedAt) / 60000)) : 0; }
+
+function showParent() {
+  const t = now();
+  // 이번 주 (오늘 포함 최근 7일)
+  const recent = db.sessions.filter(s => daysBetween(s.date, t) < 7);
+  const days = new Set(recent.map(s => dayKey(s.date))).size;
+  const mins = recent.map(minutesOf).filter(Boolean);
+  const avg = mins.length ? Math.round(mins.reduce((a, b) => a + b, 0) / mins.length) : 0;
+  const over = mins.filter(m => m > 10).length;
+  $('pWeek').innerHTML = `
+    <div class="stats">
+      <div><b>${days}</b>일<span>쓴 날 (목표 주 4일)</span></div>
+      <div><b>${recent.length}</b>장<span>다 쓴 장</span></div>
+      <div><b>${avg || '-'}</b>분<span>한 장 평균</span></div>
+    </div>
+    ${over ? `<p class="warnline">이번 주 ${over}장이 10분을 넘었어요. 한 장에 낱말 수를 줄여 보세요.</p>` : ''}`;
+
+  // 낱말별 단계
+  const ws = Object.keys(db.words).sort((a, b) => Date.parse(db.words[b].last) - Date.parse(db.words[a].last));
+  $('pWords').innerHTML = ws.length ? `<table class="ptable">
+    <thead><tr><th>낱말</th><th>흐린 글자</th><th>이 단계에서</th><th>다음 단계까지</th><th>처음 쓴 날</th></tr></thead>
+    <tbody>${ws.map(w => {
+      const info = db.words[w], pr = progressOf(w);
+      const next = info.level === 0 ? '혼자 써요'
+        : (pr.needDays || pr.needSheets) ? [pr.needDays ? `${pr.needDays}일` : '', pr.needSheets ? `${pr.needSheets}장` : ''].filter(Boolean).join(' · ') + ' 남음'
+        : '다음 장을 마치면 줄어요';
+      const opts = [3, 2, 1, 0].map(n => `<option value="${n}"${n === info.level ? ' selected' : ''}>${n}번</option>`).join('');
+      return `<tr><td class="w">${esc(w)}</td>
+        <td><select data-w="${esc(w)}">${opts}</select>${info.manual ? ' <span class="muted">직접 정함</span>' : ''}</td>
+        <td>${pr.days}일 · ${info.sheetsAtLevel}장</td><td>${next}</td><td>${fmtDay(info.first)}</td></tr>`;
+    }).join('')}</tbody></table>
+    <p class="muted">흐린 글자는 같은 단계에서 ${LEVEL_DAYS}일이 지나고 ${LEVEL_SHEETS}장 이상 쓰면 하나씩 줄어요(3 → 2 → 1 → 0). 아이가 「글씨가 이상하다」며 지우기를 반복하면 한 단계 올려 주세요. 바꾸면 그날부터 다시 셉니다.</p>`
+    : '<p class="muted">아직 다 쓴 장이 없어요.</p>';
+  $('pWords').querySelectorAll('select').forEach(sel => sel.onchange = () => {
+    const info = db.words[sel.dataset.w]; if (!info) return;
+    info.level = parseInt(sel.value, 10); info.since = now().toISOString(); info.sheetsAtLevel = 0; info.manual = true;
+    save(db); showParent();
+  });
+
+  // 날짜별 기록 (최근 30장)
+  const list = db.sessions.slice(-30).reverse();
+  $('pLog').innerHTML = list.length ? '' : '<p class="muted">아직 기록이 없어요.</p>';
+  if (list.length) {
+    const tbl = document.createElement('table'); tbl.className = 'ptable';
+    tbl.innerHTML = '<thead><tr><th>날짜</th><th>낱말 (흐린 글자)</th><th>글자</th><th>시간</th><th>고른 글자</th></tr></thead><tbody></tbody>';
+    for (const s of list) {
+      const tr = document.createElement('tr');
+      const d = new Date(s.date);
+      const st = s.steps || s.words.map(() => s.step);
+      tr.innerHTML = `<td>${fmtDay(d)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}</td>
+        <td>${s.words.map((w, k) => `${esc(w)}(${st[k]})`).join(', ')}${s.auto ? '' : ' <span class="muted">고정</span>'}</td>
+        <td>${s.cells.length}</td><td>${minutesOf(s) || '-'}분</td><td></td>`;
+      const cell = s.cells[s.best];
+      if (cell) tr.lastElementChild.appendChild(renderCell(cell, 44));
+      tbl.querySelector('tbody').appendChild(tr);
+    }
+    $('pLog').appendChild(tbl);
+  }
+  $('pPenOnly').checked = !!settings.penOnly;
+  show('scrParent');
+}
+$('pPenOnly').onchange = () => { settings.penOnly = $('pPenOnly').checked; saveSettings(); };
+$('btnParentBack').onclick = showStart;
+$('btnWipe').onclick = () => {
+  if (!confirm('이 기기에 저장된 글씨와 기록을 모두 지울까요? 되돌릴 수 없어요.')) return;
+  db = { sessions: [], words: {}, next: 0 }; save(db); showParent();
+};
+
 // ── 시작 ─────────────────────────────────────────────
 let rz = 0;
 window.addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { if (words.length && $('scrStart').hidden) layout(); }); });
@@ -374,11 +528,12 @@ showStart();
   const q = new URLSearchParams(location.search);
   if (q.get('go') === '1' && q.get('words')) {
     const ws = parseWords(q.get('words'));
-    const st = Math.max(0, Math.min(3, parseInt(q.get('step') ?? settings.step, 10) || 0));
+    const raw = q.get('step') ?? settings.step;
+    const st = raw === 'auto' ? 'auto' : Math.max(0, Math.min(3, parseInt(raw, 10) || 0));
     if (ws.length) startSheet(ws, st);
   }
 }
 
 // 시험용 손잡이 (자동 시험이 상태를 읽는다)
-window.__trace = { get state() { return { words, step, wi, mode, geo: { ...geo }, pages, session, db }; } };
+window.__trace = { get state() { return { words, steps, stepMode, wi, mode, geo: { ...geo }, pages, session, db }; } };
 })();
