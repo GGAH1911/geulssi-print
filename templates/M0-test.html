@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>M0 글꼴·칸 크기 고르기</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  .head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 4mm; }
+  .head h1 { font-size: 15pt; margin: 0; font-weight: 700; }
+  .head .small { text-align: right; }
+  .row { margin-bottom: 5mm; }
+  .label { display: flex; align-items: center; gap: 2mm; font-size: 9pt; margin-bottom: 1.2mm; }
+  .label .no { font-weight: 700; font-size: 11pt; }
+  .label .pick { display: inline-block; width: 6mm; height: 6mm; border: 0.3mm solid #888; border-radius: 50%; }
+  .section { font-size: 10.5pt; font-weight: 700; margin: 6mm 0 3mm; border-top: 0.3mm solid #999; padding-top: 3mm; }
+  .ruler { margin-top: 5mm; }
+  .ruler .bar { width: 100mm; height: 3mm; border: 0.3mm solid #000; border-top: 0; }
+</style>
+</head>
+<body>
+<div class="screen-note"><a href="../index.html">← 처음으로</a><br>
+  인쇄: <b>⌘P → 용지 A4 · 배율 「기본값」(100%) · 여백 「기본값」</b>.
+  1쪽·2쪽은 아이가 덧써 보는 장, 2쪽 아래 「흐린 글자 색」은 아빠가 프린터로 확인하는 줄입니다.
+  인쇄 창에서 「배경 그래픽」을 껐을 때와 켰을 때 보조선(점선)이 둘 다 나오는지도 봐 주세요.
+</div>
+<div id="pages"></div>
+
+<script>
+// 시험할 조합: 글꼴 3종 × 칸 3종 = 9줄. 9줄이 한 장에 안 들어가므로 두 장으로 나눈다(칸은 줄이지 않는다).
+const FONTS = [
+  { name: '학교안심 받아쓰기', cls: 'f-badasseugi' },
+  { name: '학교안심 바른돋움', cls: 'f-bareun' },
+  { name: '케리스 케듀체',     cls: 'f-kedu' },
+];
+const SIZES = [20, 25, 30];          // mm
+const WORDS = ['좀비', '에메랄드'];
+const GRAYS = ['#bbb', '#ccc', '#ddd'];
+const CIRCLED = '①②③④⑤⑥⑦⑧⑨';
+
+function cells(word, opts = {}) {
+  return [...word].map(ch => `<div class="cell"><span class="ch">${ch}</span></div>`).join('');
+}
+function row(no, labelHtml, cls, style) {
+  return `<div class="row ${cls}" style="${style}">
+    <div class="label"><span class="no">${no}</span>${labelHtml}<span class="pick"></span><span class="small">← 제일 잘 써지면 동그라미</span></div>
+    <div class="cells">${cells(WORDS[0])}<div class="gap"></div>${cells(WORDS[1])}</div>
+  </div>`;
+}
+
+const rows = [];
+let n = 0;
+for (const f of FONTS) for (const s of SIZES) {
+  rows.push(row(CIRCLED[n++], `${f.name} · ${s}mm 칸`, f.cls, `--cell:${s}mm;`));
+}
+
+const head = (page) => `<div class="head">
+  <h1>어떤 글씨가 제일 잘 써질까? <span class="small">(${page}/2)</span></h1>
+  <div class="small">흐린 글자를 따라 써 보고<br>제일 잘 써진 줄에 동그라미!</div>
+</div>`;
+
+// 1쪽: ①~⑥ (받아쓰기·바른돋움), 2쪽: ⑦~⑨ (케듀체) + 아빠 확인용 흐린 글자 색
+const grayRows = GRAYS.map((g, i) =>
+  `<div class="row f-badasseugi" style="--trace-color:${g}; --cell:25mm;">
+     <div class="label"><span class="no">${'ABC'[i]}</span>흐린 글자 색 ${g} · 학교안심 받아쓰기 · 25mm</div>
+     <div class="cells">${cells(WORDS[0])}<div class="gap"></div>${cells(WORDS[1])}</div>
+   </div>`).join('');
+
+document.getElementById('pages').innerHTML = `
+  <section class="sheet">${head(1)}${rows.slice(0, 6).join('')}</section>
+  <section class="sheet">${head(2)}${rows.slice(6).join('')}
+    <div class="section">아빠 확인용: 흐린 글자 색 (프린터에서 사라지지도, 너무 진하지도 않은 줄을 고르세요. 위 ①~⑨는 #ccc)</div>
+    ${grayRows}
+    <div class="ruler small">인쇄 크기 확인: 아래 선이 자로 재서 100mm 이면 칸 크기가 맞게 나온 것입니다.<div class="bar"></div></div>
+  </section>`;
+</script>
+</body>
+</html>

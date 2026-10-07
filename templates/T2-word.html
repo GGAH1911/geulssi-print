@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>T2 낱말 쓰기</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  .top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5mm; }
+  .top h1 { margin: 0; font-size: 17pt; font-weight: 700; }
+  .top .sub { font-size: 9.5pt; margin-top: 1.5mm; }
+  .top .right { display: flex; flex-direction: column; align-items: flex-end; gap: 2mm; }
+  .date { font-size: 10pt; }
+  .done-box .tick { display: inline-block; width: 5mm; height: 5mm; border: 0.35mm solid var(--ink); vertical-align: -1mm; margin-left: 1.5mm; }
+
+  .word { display: flex; gap: 4mm; margin-bottom: 7mm; break-inside: avoid; }
+  .pic { flex: none; width: 28mm; display: flex; flex-direction: column; align-items: center; gap: 1.5mm; }
+  .pic .box { width: 28mm; height: 28mm; box-sizing: border-box; border: 0.3mm dashed #999; border-radius: 3mm;
+              display: flex; align-items: center; justify-content: center; font-size: 8pt; color: #aaa; }
+  .pic .box img { max-width: 100%; max-height: 100%; }
+  .pic .model { font-family: var(--trace-font); font-size: 15pt; color: var(--ink); }
+  .copies { display: flex; flex-wrap: wrap; gap: 3mm 4mm; align-content: flex-start; }
+
+  .dad { margin-top: 2mm; border-top: 0.3mm solid #999; padding-top: 3mm; }
+  .dad .label { font-size: 10pt; font-weight: 700; margin-bottom: 1.5mm; }
+  .dad .cells { --cell: 18mm; }
+  .foot { position: absolute; bottom: 0; right: 0; }
+  @media screen { .foot { bottom: 12mm; right: 12mm; } }
+  @media print { .sheet { height: 272mm; } }
+</style>
+</head>
+<body>
+<div class="screen-note"><a href="../index.html">← 처음으로</a><br>
+  인쇄: ⌘P → A4 · 배율 기본값. 주소 뒤에 붙여 바꿀 수 있어요.<br>
+  <code>?words=칼,활,좀비</code> 낱말 직접 넣기 ·
+  <code>?list=game&amp;from=5</code> 목록의 6번째 낱말부터 ·
+  <code>?step=3</code> 덧쓰기 단계(3·2·1·0, 한 낱말에서 흐린 글자로 주는 횟수) ·
+  <code>?per=3</code> 한 장에 낱말 수
+</div>
+<div id="pages"></div>
+
+<script src="../data/words/game.js"></script>
+<script>
+const q = new URLSearchParams(location.search);
+const COPIES = 4;                                   // 낱말 하나를 쓰는 횟수 (흐린 글자 + 빈칸)
+const STEP = Math.max(0, Math.min(3, parseInt(q.get('step') ?? '3', 10)));
+const PER = Math.max(1, Math.min(4, parseInt(q.get('per') ?? '4', 10)));
+const CHAR_BUDGET = 24;                             // 한 장에 아이가 쓰는 글자 수 상한 (5~10분 분량)
+
+// 낱말 고르기: ?words= 가 있으면 그것, 없으면 목록(list)에서 from 번째부터
+let items;
+if (q.get('words')) {
+  items = q.get('words').split(',').map(w => w.trim()).filter(Boolean).map(word => ({ word }));
+} else {
+  const list = (window.WORDS || {})[q.get('list') || 'game'] || [];
+  items = list.slice(parseInt(q.get('from') || '0', 10));
+  if (!q.get('all')) items = items.slice(0, PER);
+}
+
+// 장 나누기: 낱말 수(PER)와 글자 수(CHAR_BUDGET)를 둘 다 넘지 않게
+const pages = [];
+let cur = [], chars = 0;
+for (const it of items) {
+  const n = [...it.word].length * COPIES;
+  if (cur.length && (cur.length >= PER || chars + n > CHAR_BUDGET)) { pages.push(cur); cur = []; chars = 0; }
+  cur.push(it); chars += n;
+}
+if (cur.length) pages.push(cur);
+
+const cell = ch => `<div class="cell">${ch ? `<span class="ch">${ch}</span>` : ''}</div>`;
+function copy(word, traced) {
+  return `<div class="cells">${[...word].map(ch => cell(traced ? ch : '')).join('')}</div>`;
+}
+function wordBlock(it) {
+  const pic = it.pic ? `<img src="../assets/pics/${it.pic}" alt="">` : '그림을 그려 봐요';
+  let copies = '';
+  for (let i = 0; i < COPIES; i++) copies += copy(it.word, i < STEP);
+  return `<div class="word">
+    <div class="pic"><div class="box">${pic}</div><div class="model">${it.word}</div></div>
+    <div class="copies">${copies}</div>
+  </div>`;
+}
+function sheet(ws, i) {
+  return `<section class="sheet">
+    <div class="top">
+      <div>
+        <h1>낱말 쓰기</h1>
+        <div class="sub">흐린 글자를 따라 쓰고, 빈칸에도 써 봐요. 다 쓰면 <b>제일 잘 쓴 글자 하나에 동그라미!</b></div>
+      </div>
+      <div class="right">
+        <div class="date">____월 ____일</div>
+        <div class="done-box">다 했다!<span class="tick"></span></div>
+      </div>
+    </div>
+    ${ws.map(wordBlock).join('')}
+    <div class="dad">
+      <div class="label">아빠 줄 <span class="small">(아빠도 같은 낱말 하나를 써요)</span></div>
+      <div class="cells">${'<div class="cell"></div>'.repeat(6)}</div>
+    </div>
+    <div class="foot small">덧쓰기 ${STEP}단계 · ${i + 1}/${pages.length}</div>
+  </section>`;
+}
+document.getElementById('pages').innerHTML = pages.map(sheet).join('');
+</script>
+</body>
+</html>

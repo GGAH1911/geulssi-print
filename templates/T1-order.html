@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>T1 게임 주문서</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  /* 주문서는 자유롭게 쓰는 장이라 칸을 조금 작게(20mm) 해서 한 줄에 9칸이 들어가게 한다. */
+  .sheet { --cell: 20mm; }
+  .title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4mm; }
+  .title h1 { margin: 0; font-family: 'KeduLine', var(--ui-font); font-weight: 400; font-size: 34pt; letter-spacing: 1mm; }
+  .meta { text-align: right; font-size: 11pt; line-height: 2; }
+  .rule { font-size: 10pt; background: none; border: 0.3mm solid #999; border-radius: 2mm; padding: 2mm 3mm; margin-bottom: 5mm; }
+
+  .q { margin-bottom: 5mm; }
+  .q .ask { font-size: 13pt; font-weight: 700; margin-bottom: 2mm; }
+  .q .ask .hint { font-size: 9pt; font-weight: 400; color: #666; margin-left: 2mm; }
+  .kinds { display: flex; gap: 6mm; font-size: 13pt; }
+  .kinds span { border: 0.35mm solid var(--ink); border-radius: 8mm; padding: 1.5mm 5mm; }
+  .cells + .cells { margin-top: 2mm; }
+
+  .draw { box-sizing: border-box; height: 80mm; border: 0.35mm dashed #777; border-radius: 3mm; position: relative; }
+  .draw .lab { position: absolute; top: 2mm; left: 3mm; font-size: 10pt; color: #888; }
+
+  .dad { display: flex; gap: 5mm; margin-top: 5mm; }
+  .stamp { flex: none; width: 34mm; height: 34mm; border: 0.5mm solid var(--ink); border-radius: 50%;
+           display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; font-size: 13pt; }
+  .stamp .small { font-weight: 400; margin-top: 1mm; }
+  .dadnote { flex: 1; border: 0.35mm solid #999; border-radius: 3mm; padding: 2.5mm 4mm; font-size: 10.5pt; line-height: 2.1; }
+  .dadnote .line { border-bottom: 0.3mm solid #bbb; height: 7mm; }
+</style>
+</head>
+<body>
+<div class="screen-note"><a href="../index.html">← 처음으로</a><br>인쇄: ⌘P → A4 · 배율 기본값. 아이가 주문서를 내면 아빠가 게임에 만들고, 「완성!」 칸에 도장을 찍어 벽에 붙여요. 목록은 <code>log/orders.md</code>에 적어요.</div>
+
+<section class="sheet">
+  <div class="title">
+    <h1>게임 주문서</h1>
+    <div class="meta">주문 번호 No. ______<br>____월 ____일</div>
+  </div>
+  <div class="rule">던전 모험에 넣고 싶은 것을 <b>직접 써서</b> 내면, 아빠가 게임에 만들어 줘요.</div>
+
+  <div class="q">
+    <div class="ask">무엇을 만들까요? <span class="hint">하나에 동그라미</span></div>
+    <div class="kinds"><span>몬스터</span><span>무기</span><span>맵</span><span>그 밖에</span></div>
+  </div>
+
+  <div class="q">
+    <div class="ask">이름:</div>
+    <div class="cells" id="name"></div>
+  </div>
+
+  <div class="q">
+    <div class="ask">무엇을 하나요? <span class="hint">예) 불을 뿜어요, 하늘을 날아요</span></div>
+    <div class="cells" id="what1"></div>
+    <div class="cells" id="what2"></div>
+  </div>
+
+  <div class="draw"><span class="lab">그림으로 보여 줘요</span></div>
+
+  <div class="dad">
+    <div class="stamp">완성!<span class="small">____월 ____일</span></div>
+    <div class="dadnote">아빠가 쓰는 칸
+      <div class="line"></div><div class="line"></div>
+    </div>
+  </div>
+</section>
+
+<script>
+const blank = n => '<div class="cell"></div>'.repeat(n);
+document.getElementById('name').innerHTML = blank(9);
+document.getElementById('what1').innerHTML = blank(9);
+document.getElementById('what2').innerHTML = blank(9);
+</script>
+</body>
+</html>

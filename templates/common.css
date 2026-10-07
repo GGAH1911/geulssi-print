@@ -1,0 +1,75 @@
+/* 글씨 연습장 공통 스타일
+ * 모든 학습지가 이 파일을 쓴다. 칸 크기·흐린 글자 색·덧쓰기 글꼴은 아래 :root 변수 한곳에서 정한다.
+ * M0(글꼴·칸 크기 시험 출력) 결과가 나오면 --trace-font, --cell, --trace-color 를 아이가 고른 값으로 고정한다.
+ */
+
+/* ── 글꼴 (모두 KERIS 학교 안심폰트, OFL. assets/fonts/LICENSE-OFL.txt 참고) ── */
+@font-face { font-family: 'Badasseugi'; src: url('../assets/fonts/HakgyoansimBadasseugi-L.ttf') format('truetype'); }
+@font-face { font-family: 'Bareun'; src: url('../assets/fonts/HakgyoansimBareondotum-R.ttf') format('truetype'); font-weight: 400; }
+@font-face { font-family: 'Bareun'; src: url('../assets/fonts/HakgyoansimBareondotum-B.ttf') format('truetype'); font-weight: 700; }
+@font-face { font-family: 'Kedu'; src: url('../assets/fonts/KERISKEDU-R.ttf') format('truetype'); }
+@font-face { font-family: 'KeduLine'; src: url('../assets/fonts/KERISKEDU-Line.ttf') format('truetype'); }
+
+:root {
+  /* M0 결과로 고정할 값 (아직 미정, 임시값). 글꼴을 바꿀 때는 아래 .f-* 묶음의 세 값을 함께 옮긴다. */
+  --trace-font: 'Badasseugi';
+  --trace-size: .792;
+  --trace-shift: 0em;
+  --cell: 25mm;
+  --trace-color: #ccc;
+
+  --ink: #222;           /* 안내 글자 */
+  --line-color: #444;    /* 칸 테두리 */
+  --guide-color: #8fa7bf;/* 열십자 보조선 */
+  --ui-font: 'Bareun', 'Apple SD Gothic Neo', sans-serif;
+}
+
+/* ── 용지 ── */
+@page { size: A4 portrait; margin: 12mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { margin: 0; font-family: var(--ui-font); color: var(--ink); }
+.sheet { box-sizing: border-box; width: 186mm; break-after: page; position: relative; }
+.sheet:last-child { break-after: auto; }
+
+@media screen {
+  body { background: #e6e6e6; }
+  .sheet { width: 210mm; min-height: 297mm; padding: 12mm; margin: 8mm auto; background: #fff;
+           box-shadow: 0 1px 6px rgba(0, 0, 0, .25); }
+  .screen-note { width: 210mm; margin: 8mm auto 0; font-size: 14px; line-height: 1.6; }
+}
+@media print { .screen-note { display: none; } }
+
+/* ── 쓰기 칸 ──
+ * 보조선과 테두리는 배경색이 아니라 border 로 그린다.
+ * 인쇄 창에서 「배경 그래픽」을 꺼도 나오게 하기 위해서다.
+ */
+.cells { display: flex; align-items: flex-start; }
+.cell {
+  box-sizing: border-box; position: relative; flex: none;
+  width: var(--cell); height: var(--cell);
+  border: 0.35mm solid var(--line-color);
+  margin-left: -0.35mm;                       /* 이웃 칸과 테두리 겹치기 */
+  display: flex; align-items: center; justify-content: center;
+}
+.cell:first-child { margin-left: 0; }
+.cell::before, .cell::after { content: ''; position: absolute; }
+.cell::before { left: 50%; top: 0; bottom: 0; border-left: 0.25mm dashed var(--guide-color); }
+.cell::after  { top: 50%; left: 0; right: 0; border-top: 0.25mm dashed var(--guide-color); }
+.cell .ch {
+  position: relative; z-index: 1;
+  font-family: var(--trace-font); font-size: calc(var(--cell) * var(--trace-size)); line-height: 1;
+  color: var(--trace-color);
+  transform: translateY(var(--trace-shift));
+}
+
+/* 글꼴 묶음: 글꼴마다 글자 크기와 위아래 위치가 달라서, 칸 안에서 글자 높이가
+ * 칸의 66%가 되고 가운데에 오도록 맞춘 값이다(2026-10-07 canvas measureText 로
+ * 「좀비에메랄드칼활거미물약」 평균을 재서 계산). */
+.f-badasseugi { --trace-font: 'Badasseugi'; --trace-size: .792; --trace-shift: 0em; }
+.f-bareun     { --trace-font: 'Bareun';     --trace-size: .776; --trace-shift: .035em; }
+.f-kedu       { --trace-font: 'Kedu';       --trace-size: .730; --trace-shift: .095em; }
+.gap { flex: none; width: 4mm; }
+
+/* ── 공통 장식 ── */
+.done-box { border: 0.4mm solid var(--ink); border-radius: 3mm; padding: 1.5mm 3mm; font-size: 11pt; font-weight: 700; }
+.small { font-size: 8.5pt; color: #555; }

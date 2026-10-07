@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>글씨 연습장</title>
+<style>
+  @font-face { font-family: 'Bareun'; src: url('assets/fonts/HakgyoansimBareondotum-R.ttf') format('truetype'); font-weight: 400; }
+  @font-face { font-family: 'Bareun'; src: url('assets/fonts/HakgyoansimBareondotum-B.ttf') format('truetype'); font-weight: 700; }
+  body { margin: 0; font-family: 'Bareun', 'Apple SD Gothic Neo', sans-serif; background: #f4f4f1; color: #222; }
+  main { max-width: 640px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 26px; margin: 8px 0 4px; }
+  .lead { color: #555; margin: 0 0 20px; line-height: 1.6; }
+  .card { background: #fff; border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .card h2 { font-size: 18px; margin: 0 0 6px; }
+  .card p { margin: 0 0 12px; color: #555; font-size: 14px; line-height: 1.6; }
+  a.btn, button { display: inline-block; background: #2f6f4f; color: #fff; text-decoration: none; border: 0; border-radius: 8px;
+                  padding: 10px 14px; font: inherit; font-size: 15px; font-weight: 700; margin: 0 6px 6px 0; cursor: pointer; }
+  a.btn.sub { background: #e7efe9; color: #2f6f4f; }
+  label { display: block; font-size: 14px; margin: 8px 0 4px; }
+  input, select { font: inherit; font-size: 16px; padding: 8px 10px; border: 1px solid #bbb; border-radius: 8px; box-sizing: border-box; }
+  input[type=text] { width: 100%; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .row > div { flex: 1; min-width: 120px; }
+  .row select, .row input { width: 100%; }
+  .foot { font-size: 12px; color: #777; line-height: 1.6; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>글씨 연습장</h1>
+  <p class="lead">A4로 뽑아 쓰는 한글 쓰기 학습지. 누르면 학습지가 열리고, 인쇄(컴퓨터 ⌘P / Ctrl+P, 휴대폰은 공유 → 프린트)하면 됩니다. 배율은 100%(기본값)로 뽑아 주세요.</p>
+
+  <section class="card">
+    <h2>게임 주문서</h2>
+    <p>게임에 넣고 싶은 몬스터·무기·맵을 직접 써서 내는 주문서.</p>
+    <a class="btn" href="templates/T1-order.html">주문서 열기</a>
+    <a class="btn sub" href="pdf/T1-order.pdf">PDF</a>
+  </section>
+
+  <section class="card">
+    <h2>낱말 쓰기</h2>
+    <p>낱말 하나를 4번 써요. 흐린 글자(따라 쓰기) 칸 수를 고르면 나머지는 빈칸이 됩니다. 한 장은 낱말 4개·글자 24자를 넘지 않게 나뉘어요.</p>
+    <form id="wordForm">
+      <label for="words">낱말 (쉼표로 나누기. 비워 두면 게임 낱말 목록)</label>
+      <input type="text" id="words" placeholder="예) 칼, 활, 좀비, 거미">
+      <div class="row">
+        <div>
+          <label for="step">따라 쓰기 칸</label>
+          <select id="step">
+            <option value="3">3번 (처음)</option>
+            <option value="2">2번</option>
+            <option value="1">1번</option>
+            <option value="0">0번 (모두 빈칸)</option>
+          </select>
+        </div>
+        <div>
+          <label for="from">게임 목록에서 시작 번호</label>
+          <input type="number" id="from" min="1" value="1">
+        </div>
+      </div>
+      <p style="margin-top:12px"><button type="submit">낱말 쓰기 열기</button></p>
+    </form>
+    <a class="btn sub" href="pdf/T2-word-game-01-step3.pdf">PDF 칼·활·좀비·거미</a>
+    <a class="btn sub" href="pdf/T2-word-game-02-step3.pdf">PDF 에메랄드·물약·보물상자·대장장이</a>
+  </section>
+
+  <section class="card">
+    <h2>빈칸 공책</h2>
+    <p>글자 없이 열십자 보조선 칸만 있는 장. 편지·쪽지·자유롭게 쓰기용.</p>
+    <form id="blankForm" class="row">
+      <div>
+        <label for="cell">칸 크기</label>
+        <select id="cell">
+          <option value="30">30mm (크게)</option>
+          <option value="25" selected>25mm</option>
+          <option value="20">20mm</option>
+          <option value="15">15mm (작게)</option>
+        </select>
+      </div>
+      <div>
+        <label for="pages">장 수</label>
+        <input type="number" id="pages" min="1" max="10" value="1">
+      </div>
+      <div><button type="submit">빈칸 공책 열기</button></div>
+    </form>
+    <a class="btn sub" href="pdf/T0-blank-25.pdf">PDF 25mm 1장</a>
+  </section>
+
+  <section class="card">
+    <h2>글꼴·칸 크기 고르기 (처음 한 번)</h2>
+    <p>글꼴 3종 × 칸 3종을 따라 써 보고 제일 잘 써지는 조합을 고르는 시험 장.</p>
+    <a class="btn" href="templates/M0-test.html">시험 장 열기</a>
+    <a class="btn sub" href="pdf/M0-test.pdf">PDF</a>
+  </section>
+
+  <p class="foot">글꼴: 한국교육학술정보원(KERIS) 학교 안심폰트 — 학교안심 받아쓰기·바른돋움, 케리스 케듀체 (SIL Open Font License 1.1, <a href="assets/fonts/LICENSE-OFL.txt">라이선스</a>).</p>
+</main>
+<script>
+document.getElementById('wordForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const words = document.getElementById('words').value.split(/[,，\s]+/).map(s => s.trim()).filter(Boolean);
+  const p = new URLSearchParams({ step: document.getElementById('step').value });
+  if (words.length) { p.set('words', words.join(',')); p.set('all', '1'); }
+  else p.set('from', String(Math.max(0, (parseInt(document.getElementById('from').value, 10) || 1) - 1)));
+  location.href = 'templates/T2-word.html?' + p;
+});
+document.getElementById('blankForm').addEventListener('submit', e => {
+  e.preventDefault();
+  location.href = 'templates/T0-blank.html?' + new URLSearchParams({ cell: document.getElementById('cell').value, pages: document.getElementById('pages').value });
+});
+</script>
+</body>
+</html>

@@ -1,2 +1,7 @@
-# geulssi-print
-글씨 연습장: A4로 뽑아 쓰는 한글 쓰기 학습지 (게임 주문서, 낱말 쓰기, 빈칸 공책)
+# 글씨 연습장
+
+A4로 뽑아 쓰는 한글 쓰기 학습지 (게임 주문서, 낱말 쓰기, 빈칸 공책).
+
+사이트: https://ggah1911.github.io/geulssi-print/
+
+글꼴: KERIS 학교 안심폰트 (SIL Open Font License 1.1) - assets/fonts/LICENSE-OFL.txt
