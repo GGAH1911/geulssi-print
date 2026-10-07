@@ -67,7 +67,7 @@
 
   <section class="card">
     <h2>빈칸 공책</h2>
-    <p>글자 없이 열십자 보조선 칸만 있는 장. 편지·쪽지·자유롭게 쓰기용.</p>
+    <p>글자 없이 열십자 보조선 칸만 있는 장. 편지·쪽지·자유롭게 쓰기용. 가로 용지 14칸 × 10줄, 세로 용지 10칸 × 14줄이고 두 방향의 칸 크기가 같아요.</p>
     <form id="blankForm" class="row">
       <div>
         <label for="dir">용지 방향</label>
@@ -79,8 +79,9 @@
       <div>
         <label for="cell">칸 크기</label>
         <select id="cell">
+          <option value="" selected>기본 (14 × 10칸)</option>
           <option value="30">30mm (크게)</option>
-          <option value="25" selected>25mm</option>
+          <option value="25">25mm</option>
           <option value="20">20mm</option>
           <option value="15">15mm (작게)</option>
         </select>
@@ -91,8 +92,8 @@
       </div>
       <div><button type="submit">빈칸 공책 열기</button></div>
     </form>
-    <a class="btn sub" href="pdf/T0-blank-25-portrait.pdf">PDF 세로 25mm</a>
-    <a class="btn sub" href="pdf/T0-blank-25-landscape.pdf">PDF 가로 25mm</a>
+    <a class="btn sub" href="pdf/T0-blank-portrait.pdf">PDF 세로 10×14</a>
+    <a class="btn sub" href="pdf/T0-blank-landscape.pdf">PDF 가로 14×10</a>
   </section>
 
   <section class="card">
@@ -115,7 +116,7 @@ document.getElementById('wordForm').addEventListener('submit', e => {
 });
 document.getElementById('blankForm').addEventListener('submit', e => {
   e.preventDefault();
-  location.href = 'templates/T0-blank.html?' + new URLSearchParams({ dir: document.getElementById('dir').value, cell: document.getElementById('cell').value, pages: document.getElementById('pages').value });
+  location.href = 'templates/T0-blank.html?' + new URLSearchParams(Object.entries({ dir: document.getElementById('dir').value, cell: document.getElementById('cell').value, pages: document.getElementById('pages').value }).filter(([, v]) => v));
 });
 </script>
 </body>
