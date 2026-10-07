@@ -70,6 +70,13 @@
     <p>글자 없이 열십자 보조선 칸만 있는 장. 편지·쪽지·자유롭게 쓰기용.</p>
     <form id="blankForm" class="row">
       <div>
+        <label for="dir">용지 방향</label>
+        <select id="dir">
+          <option value="port" selected>세로</option>
+          <option value="land">가로</option>
+        </select>
+      </div>
+      <div>
         <label for="cell">칸 크기</label>
         <select id="cell">
           <option value="30">30mm (크게)</option>
@@ -84,7 +91,8 @@
       </div>
       <div><button type="submit">빈칸 공책 열기</button></div>
     </form>
-    <a class="btn sub" href="pdf/T0-blank-25.pdf">PDF 25mm 1장</a>
+    <a class="btn sub" href="pdf/T0-blank-25-portrait.pdf">PDF 세로 25mm</a>
+    <a class="btn sub" href="pdf/T0-blank-25-landscape.pdf">PDF 가로 25mm</a>
   </section>
 
   <section class="card">
@@ -107,7 +115,7 @@ document.getElementById('wordForm').addEventListener('submit', e => {
 });
 document.getElementById('blankForm').addEventListener('submit', e => {
   e.preventDefault();
-  location.href = 'templates/T0-blank.html?' + new URLSearchParams({ cell: document.getElementById('cell').value, pages: document.getElementById('pages').value });
+  location.href = 'templates/T0-blank.html?' + new URLSearchParams({ dir: document.getElementById('dir').value, cell: document.getElementById('cell').value, pages: document.getElementById('pages').value });
 });
 </script>
 </body>
